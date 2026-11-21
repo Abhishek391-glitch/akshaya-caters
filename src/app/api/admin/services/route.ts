@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminSession } from '@/lib/auth';
 import { getServices, saveService } from '@/lib/db/adapter';
+import { revalidatePath } from 'next/cache';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
@@ -24,6 +27,15 @@ export async function POST(request: NextRequest) {
     }
 
     const saved = await saveService(body);
+
+    try {
+      revalidatePath('/services');
+      revalidatePath('/admin/services');
+      revalidatePath('/');
+    } catch (e) {
+      // ignore
+    }
+
     return NextResponse.json(saved);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to create service' }, { status: 500 });

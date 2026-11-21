@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminSession } from '@/lib/auth';
 import { saveTestimonial, deleteTestimonial } from '@/lib/db/adapter';
+import { revalidatePath } from 'next/cache';
+
+export const dynamic = 'force-dynamic';
 
 export async function PUT(
   request: NextRequest,
@@ -15,6 +18,14 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
     const updated = await saveTestimonial({ ...body, id });
+
+    try {
+      revalidatePath('/admin/testimonials');
+      revalidatePath('/');
+    } catch (e) {
+      // ignore
+    }
+
     return NextResponse.json(updated);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update testimonial' }, { status: 500 });
@@ -35,6 +46,13 @@ export async function DELETE(
     const ok = await deleteTestimonial(id);
     if (!ok) {
       return NextResponse.json({ error: 'Failed to delete testimonial' }, { status: 404 });
+    }
+
+    try {
+      revalidatePath('/admin/testimonials');
+      revalidatePath('/');
+    } catch (e) {
+      // ignore
     }
 
     return NextResponse.json({ success: true });

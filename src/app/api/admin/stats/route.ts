@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getAdminSession } from '@/lib/auth';
 import { getDashboardStats } from '@/lib/db/adapter';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const session = await getAdminSession();

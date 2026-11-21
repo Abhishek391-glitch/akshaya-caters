@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminSession } from '@/lib/auth';
 import { getSiteSettings, updateSiteSettings } from '@/lib/db/adapter';
+import { revalidatePath } from 'next/cache';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
@@ -20,6 +23,18 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
     const updated = await updateSiteSettings(body);
+
+    try {
+      revalidatePath('/');
+      revalidatePath('/menu');
+      revalidatePath('/services');
+      revalidatePath('/gallery');
+      revalidatePath('/contact');
+      revalidatePath('/admin/settings');
+    } catch (e) {
+      // ignore
+    }
+
     return NextResponse.json(updated);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 });

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminSession } from '@/lib/auth';
 import { getTestimonials, saveTestimonial } from '@/lib/db/adapter';
+import { revalidatePath } from 'next/cache';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
@@ -24,6 +27,14 @@ export async function POST(request: NextRequest) {
     }
 
     const saved = await saveTestimonial(body);
+
+    try {
+      revalidatePath('/admin/testimonials');
+      revalidatePath('/');
+    } catch (e) {
+      // ignore
+    }
+
     return NextResponse.json(saved);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to save testimonial' }, { status: 500 });

@@ -3,6 +3,8 @@ import { createEnquiry, getEnquiries } from '@/lib/db/adapter';
 import { getAdminSession } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
