@@ -499,16 +499,41 @@ export async function getEnquiries(status?: EnquiryStatus): Promise<Enquiry[]> {
 
 export async function createEnquiry(enquiry: Omit<Enquiry, 'id' | 'status' | 'created_at'>): Promise<Enquiry> {
   const now = new Date().toISOString();
-  const payload = {
-    ...enquiry,
+  const cleanEventDate =
+    enquiry.event_date && enquiry.event_date.trim() !== ''
+      ? enquiry.event_date.trim()
+      : null;
+  const cleanGuestCount =
+    enquiry.guest_count && !isNaN(Number(enquiry.guest_count))
+      ? Number(enquiry.guest_count)
+      : 0;
+
+  const payload: any = {
+    customer_name: enquiry.customer_name?.trim() || 'Valued Customer',
+    phone: enquiry.phone?.trim() || '',
+    email: enquiry.email?.trim() || '',
+    enquiry_type: enquiry.enquiry_type === 'quotation' ? 'quotation' : 'general',
+    subject: enquiry.subject?.trim() || '',
+    message: enquiry.message?.trim() || '',
+    event_type: enquiry.event_type?.trim() || '',
+    event_date: cleanEventDate,
+    event_location: enquiry.event_location?.trim() || '',
+    guest_count: cleanGuestCount,
+    food_preference: enquiry.food_preference?.trim() || 'Both',
+    budget: enquiry.budget?.trim() || '',
     status: 'new' as EnquiryStatus,
+    admin_notes: '',
     created_at: now,
     updated_at: now,
   };
 
   if (isSupabaseConfigured() && supabaseAdmin) {
     const { data, error } = await supabaseAdmin.from('enquiries').insert(payload).select().single();
-    if (!error && data) return data as Enquiry;
+    if (error) {
+      console.error('Supabase createEnquiry error:', error);
+    } else if (data) {
+      return data as Enquiry;
+    }
   }
 
   const db = getLocalDb();
@@ -516,6 +541,7 @@ export async function createEnquiry(enquiry: Omit<Enquiry, 'id' | 'status' | 'cr
     id: `enq-${Date.now()}`,
     ...payload,
   };
+  if (!db.enquiries) db.enquiries = [];
   db.enquiries.unshift(newEnquiry);
   saveLocalDb(db);
   return newEnquiry;

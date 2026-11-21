@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Enquiry, EnquiryStatus } from '@/lib/db/types';
 import {
   Search,
@@ -16,6 +16,7 @@ import {
   MapPin,
   Clock,
   Sparkles,
+  RotateCw,
 } from 'lucide-react';
 
 interface EnquiriesManagerClientProps {
@@ -29,6 +30,33 @@ export default function EnquiriesManagerClient({
   const [activeTab, setActiveTab] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [selectedEnquiry, setSelectedEnquiry] = useState<Enquiry | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Function to fetch latest enquiries from server
+  const fetchLatestEnquiries = useCallback(async () => {
+    try {
+      setIsRefreshing(true);
+      const res = await fetch('/api/enquiries');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setEnquiries(data);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching latest enquiries:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  // Auto-poll for new leads every 15 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      fetchLatestEnquiries();
+    }, 15000);
+    return () => clearInterval(timer);
+  }, [fetchLatestEnquiries]);
 
   // Notes editing state inside detail modal
   const [tempNotes, setTempNotes] = useState('');
@@ -150,14 +178,26 @@ export default function EnquiriesManagerClient({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 text-xs">
-          <span className="font-semibold text-[#244C3A]">
-            Total Leads: {enquiries.length}
-          </span>
-          <span className="text-[#747970]">•</span>
-          <span className="font-bold text-amber-700">
-            {enquiries.filter((e) => e.status === 'new').length} New
-          </span>
+        <div className="flex items-center gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-[#244C3A]">
+              Total Leads: {enquiries.length}
+            </span>
+            <span className="text-[#747970]">•</span>
+            <span className="font-bold text-amber-700">
+              {enquiries.filter((e) => e.status === 'new').length} New
+            </span>
+          </div>
+
+          <button
+            onClick={fetchLatestEnquiries}
+            disabled={isRefreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E1D5] bg-white text-[#244C3A] hover:bg-[#F1EFE5] font-semibold transition-all disabled:opacity-60"
+            title="Refresh Leads"
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#8FA58A]' : ''}`} />
+            <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+          </button>
         </div>
       </div>
 

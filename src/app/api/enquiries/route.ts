@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createEnquiry, getEnquiries } from '@/lib/db/adapter';
 import { getAdminSession } from '@/lib/auth';
+import { revalidatePath } from 'next/cache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,12 +44,19 @@ export async function POST(request: NextRequest) {
       subject: subject?.trim() || '',
       message: message?.trim() || '',
       event_type: event_type || '',
-      event_date: event_date || undefined,
+      event_date: event_date?.trim() ? event_date.trim() : undefined,
       event_location: event_location?.trim() || '',
       guest_count: guest_count ? Number(guest_count) : undefined,
       food_preference: food_preference || 'Both',
       budget: budget?.trim() || '',
     });
+
+    try {
+      revalidatePath('/admin');
+      revalidatePath('/admin/enquiries');
+    } catch (e) {
+      // ignore in non-request context
+    }
 
     return NextResponse.json({
       success: true,
