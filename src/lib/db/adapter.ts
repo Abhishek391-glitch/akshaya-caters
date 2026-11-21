@@ -181,18 +181,46 @@ export async function saveMenuItem(item: Partial<MenuItem>): Promise<MenuItem> {
   const now = new Date().toISOString();
   const slug = item.slug || item.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'dish';
 
+  // Strip join-only and computed fields (like category_name) before sending to database
+  const { category_name, ...cleanItem } = item;
+  const payload: any = {
+    ...cleanItem,
+    slug,
+    updated_at: now,
+  };
+
   if (isSupabaseConfigured() && supabaseAdmin) {
-    const payload = {
-      ...item,
-      slug,
-      updated_at: now,
-    };
     if (item.id) {
-      const { data, error } = await supabaseAdmin.from('menu_items').update(payload).eq('id', item.id).select().single();
-      if (!error && data) return data as MenuItem;
+      const { data, error } = await supabaseAdmin
+        .from('menu_items')
+        .update(payload)
+        .eq('id', item.id)
+        .select('*, categories(name)')
+        .single();
+      if (!error && data) {
+        return {
+          ...data,
+          category_name: (data as any).categories?.name,
+        } as MenuItem;
+      }
+      if (error) {
+        console.error('Supabase update menu_items error:', error);
+      }
     } else {
-      const { data, error } = await supabaseAdmin.from('menu_items').insert(payload).select().single();
-      if (!error && data) return data as MenuItem;
+      const { data, error } = await supabaseAdmin
+        .from('menu_items')
+        .insert(payload)
+        .select('*, categories(name)')
+        .single();
+      if (!error && data) {
+        return {
+          ...data,
+          category_name: (data as any).categories?.name,
+        } as MenuItem;
+      }
+      if (error) {
+        console.error('Supabase insert menu_items error:', error);
+      }
     }
   }
 
@@ -204,7 +232,7 @@ export async function saveMenuItem(item: Partial<MenuItem>): Promise<MenuItem> {
     if (idx !== -1) {
       const updated: MenuItem = {
         ...db.menu_items[idx],
-        ...item,
+        ...cleanItem,
         slug,
         category_name: item.category_id ? catMap.get(item.category_id) : db.menu_items[idx].category_name,
         updated_at: now,

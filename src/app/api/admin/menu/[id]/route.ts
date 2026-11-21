@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminSession } from '@/lib/auth';
 import { saveMenuItem, deleteMenuItem } from '@/lib/db/adapter';
+import { revalidatePath } from 'next/cache';
 
 export async function PUT(
   request: NextRequest,
@@ -15,6 +16,15 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
     const updated = await saveMenuItem({ ...body, id });
+
+    try {
+      revalidatePath('/menu');
+      revalidatePath('/admin/menu');
+      revalidatePath('/');
+    } catch (e) {
+      // ignore
+    }
+
     return NextResponse.json(updated);
   } catch (error) {
     console.error('Update item error:', error);
@@ -36,6 +46,14 @@ export async function DELETE(
     const ok = await deleteMenuItem(id);
     if (!ok) {
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    }
+
+    try {
+      revalidatePath('/menu');
+      revalidatePath('/admin/menu');
+      revalidatePath('/');
+    } catch (e) {
+      // ignore
     }
 
     return NextResponse.json({ success: true });

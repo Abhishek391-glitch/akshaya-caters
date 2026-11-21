@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { MenuItem, Category } from '@/lib/db/types';
 import {
   Plus,
@@ -15,6 +15,7 @@ import {
   UtensilsCrossed,
   Eye,
   EyeOff,
+  RotateCw,
 } from 'lucide-react';
 
 interface MenuManagerClientProps {
@@ -30,6 +31,24 @@ export default function MenuManagerClient({
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [dietaryFilter, setDietaryFilter] = useState('all');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchLatestItems = useCallback(async () => {
+    try {
+      setIsRefreshing(true);
+      const res = await fetch('/api/admin/menu');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setItems(data);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching latest items:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -229,13 +248,25 @@ export default function MenuManagerClient({
           </p>
         </div>
 
-        <button
-          onClick={openAddModal}
-          className="px-4 py-2.5 bg-[#244C3A] hover:bg-[#193629] text-white text-xs font-semibold uppercase tracking-wider rounded-lg shadow-sm transition-all inline-flex items-center gap-2 cursor-pointer self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4 text-[#C6A66B]" />
-          <span>Add New Food Item</span>
-        </button>
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <button
+            onClick={fetchLatestItems}
+            disabled={isRefreshing}
+            className="px-3.5 py-2.5 bg-white border border-[#E5E1D5] hover:bg-[#F1EFE5] text-[#244C3A] text-xs font-semibold rounded-lg shadow-2xs transition-all inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+            title="Refresh Menu Items"
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#8FA58A]' : ''}`} />
+            <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+          </button>
+
+          <button
+            onClick={openAddModal}
+            className="px-4 py-2.5 bg-[#244C3A] hover:bg-[#193629] text-white text-xs font-semibold uppercase tracking-wider rounded-lg shadow-sm transition-all inline-flex items-center gap-2 cursor-pointer"
+          >
+            <Plus className="w-4 h-4 text-[#C6A66B]" />
+            <span>Add New Food Item</span>
+          </button>
+        </div>
       </div>
 
       {/* Status Alert Notification */}

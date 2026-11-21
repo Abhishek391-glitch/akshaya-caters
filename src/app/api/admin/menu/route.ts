@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminSession } from '@/lib/auth';
 import { getMenuItems, saveMenuItem, updateMenuItemPrice } from '@/lib/db/adapter';
+import { revalidatePath } from 'next/cache';
 
 export async function GET() {
   try {
@@ -24,6 +25,15 @@ export async function POST(request: NextRequest) {
     }
 
     const saved = await saveMenuItem(body);
+
+    try {
+      revalidatePath('/menu');
+      revalidatePath('/admin/menu');
+      revalidatePath('/');
+    } catch (e) {
+      // ignore
+    }
+
     return NextResponse.json(saved);
   } catch (error) {
     console.error('Save menu item error:', error);
@@ -46,6 +56,14 @@ export async function PATCH(request: NextRequest) {
     const ok = await updateMenuItemPrice(id, Number(price));
     if (!ok) {
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    }
+
+    try {
+      revalidatePath('/menu');
+      revalidatePath('/admin/menu');
+      revalidatePath('/');
+    } catch (e) {
+      // ignore
     }
 
     return NextResponse.json({ success: true });
